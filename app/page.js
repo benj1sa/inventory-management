@@ -1,24 +1,35 @@
-'use client'
-import Image from 'next/image';
-import {useState, useEffect} from 'react'
-import {firestore} from '@/firebase'
+'use client';
+import { Image } from 'next/image';
+import { useState, useEffect } from 'react';
+import { firestore } from '@/firebase';
 import { Box, Button, IconButton, InputAdornment, Modal, Stack, TextField, Typography } from '@mui/material';
 import { collection, getDocs, query, setDoc, getDoc, doc, deleteDoc } from 'firebase/firestore';
-import {SearchIcon} from '@mui/material'
+import { SearchIcon } from '@mui/material';
+import theme from './theme.js';
+import { ThemeProvider } from '@emotion/react';
+import { lightTheme, darkTheme } from './theme.js';
 
 export default function Home() {
   const [inventory, setInventory] = useState([]);
   const [open, setOpen] = useState(false);
   const [itemName, setItemName] = useState('');
   const [searchValue, setSearchValue] = useState('');
+  const [foundInventory, setFoundInventory] = useState(inventory);
   const [error, setError] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  /**
+   * This function handles the dark mode event
+   */
+  const handleThemechange = (event) => {
+    setIsDarkMode(newTheme);
+  }
 
   /**
    * This function handles the search event.
    */
   const handleSearchChange = (event) => {
-    setSearchValue(event.target.value);
-    
+    setSearchValue(event.target.value.toLowerCase());
   }
 
   /**
@@ -121,24 +132,10 @@ export default function Home() {
     await updateInventory();
   };
 
-  /**
-   * This function with filter the existing inventory list and display
-   * those that contain the string itemName.
-   */
-  const filterItems = (itemName) => {
-    filteredItemsList = []
-    inventoryList.forEach(item => {
-      if (item.contains(itemName)){
-        filteredItemsList.add(itemName);
-      }
-    });
-    return filteredItemsList;
-  }
-  
   // Only runs once when the page is loaded. In other words,
   // it only updates the local displayed inventory if the page is loaded or refreshed.
   useEffect(() => {
-    updateInventory()
+    updateInventory();
   }, []);
 
   // The opening and closing functions for the 'add items' modal
@@ -146,6 +143,7 @@ export default function Home() {
   const handleClose = () => setOpen(false);
 
   return (
+    <ThemeProvider theme={isDarkMode? darkTheme: lightTheme}>
     <Box 
       width='100vw' 
       height='100vh' 
@@ -154,6 +152,9 @@ export default function Home() {
       justifyContent='center' 
       alignItems='center' 
       gap={2}
+      sx={{
+        fontFamily: 'Poppins, sans-serif',
+      }}
     >
       <Modal open={open} onClose={handleClose}>
         <Box 
@@ -194,6 +195,7 @@ export default function Home() {
               variant='outlined' 
               onClick={() => {
                 addItem(itemName);
+                setItemName('');
               }}
             >
               Add
@@ -222,14 +224,16 @@ export default function Home() {
 
         <TextField
           variant="outlined"
-          placeholder="Search..."
+          placeholder="Search"
           value={searchValue}
           onChange={handleSearchChange}
           fullWidth
         />
       
         <Stack width='800px' height='350px' spacing={2} overflow='auto' display='flex' alignItems='center'>
-          {inventory.map(({name, quantity}) => (
+          {inventory.filter((item) => {
+            return (searchValue === '')? item : item.name.toLocaleLowerCase().includes(searchValue);
+          }).map(({name, quantity}) => (
             <Box 
               key={name}
               width='95%'
@@ -285,5 +289,6 @@ export default function Home() {
         Add New Item
       </Button>
     </Box>
+    </ThemeProvider>
   );
 }
