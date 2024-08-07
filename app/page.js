@@ -11,6 +11,7 @@ export default function Home() {
   const [open, setOpen] = useState(false);
   const [itemName, setItemName] = useState('');
   const [searchValue, setSearchValue] = useState('');
+  const [error, setError] = useState(false);
 
   /**
    * This function handles the search event.
@@ -91,8 +92,17 @@ export default function Home() {
    * @returns {Promise<void>} - A promise that resolves when the operation is complete.
    */
   const addItem = async (item) => {
+
+    // The item field may not be empty, otherwise set the error state variable to be true
+    if (item.trim() == ''){
+      setError(true);
+      return;
+    } else {
+      setError(false);
+    }
+
     // Get a reference to the document in the 'inventory' collection with the specified item ID
-    const docRef = doc(collection(firestore, 'inventory'), item);
+    const docRef = doc(collection(firestore, 'inventory'), item.trim().toLocaleLowerCase());
     
     // Fetch the document snapshot
     const docSnap = await getDoc(docRef);
@@ -156,6 +166,7 @@ export default function Home() {
           p={4}
           display='flex'
           flexDirection='column'
+          borderRadius={4}
           gap={3}
           sx={{
             transform: 'translate(-50%, -50%)',
@@ -165,10 +176,18 @@ export default function Home() {
           <Stack width='100%' direction='row' spacing={3}>
             <TextField 
               variant='outlined'
+              placeholder='Item'
               fullWidth
               value={itemName}
               onChange={(e) => {
                 setItemName(e.target.value);
+              }}
+              error={error}
+              helperText={error ? 'This field cannot be empty' : ''}
+              sx={{
+                '& .MuiFormHelperText-root': {
+                  color: error ? 'red' : 'inherit',
+                }
               }}
             />
             <Button 
