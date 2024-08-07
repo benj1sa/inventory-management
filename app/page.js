@@ -2,13 +2,23 @@
 import Image from 'next/image';
 import {useState, useEffect} from 'react'
 import {firestore} from '@/firebase'
-import { Box, Button, Modal, Stack, TextField, Typography } from '@mui/material';
-import { collection, getDocs, query, setDoc } from 'firebase/firestore';
+import { Box, Button, IconButton, InputAdornment, Modal, Stack, TextField, Typography } from '@mui/material';
+import { collection, getDocs, query, setDoc, getDoc, doc, deleteDoc } from 'firebase/firestore';
+import {SearchIcon} from '@mui/material'
 
 export default function Home() {
   const [inventory, setInventory] = useState([]);
   const [open, setOpen] = useState(false);
   const [itemName, setItemName] = useState('');
+  const [searchValue, setSearchValue] = useState('');
+
+  /**
+   * This function handles the search event.
+   */
+  const handleSearchChange = (event) => {
+    setSearchValue(event.target.value);
+    
+  }
 
   /**
    * Asynchronously updates the local inventory by fetching data from Firestore.
@@ -30,11 +40,11 @@ export default function Home() {
 
     // Iterate over each document in the query results
     docs.forEach((doc) => {
-        // Push an object representing each inventory item into the list
-        inventoryList.push({
-            name: doc.id,        // Use the document ID as the item name
-            ...doc.data(),       // Spread the document's data to include additional item details
-        });
+      // Push an object representing each inventory item into the list
+      inventoryList.push({
+          name: doc.id,        // Use the document ID as the item name
+          ...doc.data(),       // Spread the document's data to include additional item details
+      });
     });
 
     // Update the local state variable with the newly created inventory list
@@ -100,13 +110,28 @@ export default function Home() {
     // Call the function to update the inventory (assumed to be defined elsewhere)
     await updateInventory();
   };
+
+  /**
+   * This function with filter the existing inventory list and display
+   * those that contain the string itemName.
+   */
+  const filterItems = (itemName) => {
+    filteredItemsList = []
+    inventoryList.forEach(item => {
+      if (item.contains(itemName)){
+        filteredItemsList.add(itemName);
+      }
+    });
+    return filteredItemsList;
+  }
   
   // Only runs once when the page is loaded. In other words,
-  // it only updates the inventory if the page is loaded or refreshed.
+  // it only updates the local displayed inventory if the page is loaded or refreshed.
   useEffect(() => {
     updateInventory()
   }, []);
 
+  // The opening and closing functions for the 'add items' modal
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
@@ -146,16 +171,100 @@ export default function Home() {
                 setItemName(e.target.value);
               }}
             />
-            <Button variant='outlined' onClick={() => {
-              addItem(itemName);
-            }}>Add</Button>
+            <Button 
+              variant='outlined' 
+              onClick={() => {
+                addItem(itemName);
+              }}
+            >
+              Add
+            </Button>
           </Stack>
         </Box>
       </Modal>
-      <Typography variant='h1'>Inventory Management</Typography>
-      <Button variant='contained' onClick={() => {
-        handleOpen();
-      }}>Add New Item</Button>
+      
+      <Stack
+        padding={6}
+        boxShadow={3}
+        borderRadius={4}
+        spacing={2}
+      >
+        <Box
+          width='800px'
+          height='100px'
+          display='flex'
+          flexDirection='column'
+          alignItems='center' 
+          justifyContent='center'
+          borderRadius={4}
+        >
+          <Typography variant='h2' color='#333'>Inventory Items</Typography>
+        </Box>
+
+        <TextField
+          variant="outlined"
+          placeholder="Search..."
+          value={searchValue}
+          onChange={handleSearchChange}
+          fullWidth
+        />
+      
+        <Stack width='800px' height='350px' spacing={2} overflow='auto' display='flex' alignItems='center'>
+          {inventory.map(({name, quantity}) => (
+            <Box 
+              key={name}
+              width='95%'
+              minHeight='150px'
+              display='flex'
+              alignItems='center'
+              justifyContent='space-between'
+              bgcolor='#f0f0f0'
+              padding={5}
+              borderRadius={4}
+              sx={{
+                transition: 'transform 0.3s ease', // Smooth transition for the transform property
+                '&:hover': {
+                  transform: 'scale(1.02)', // Slightly increase the size
+                },
+              }}
+            >
+              <Typography variant='h2' color='#333' textAlign='center'>
+                {name.charAt(0).toUpperCase() + name.slice(1)}
+              </Typography>
+              <Typography variant='h2' color='#333' textAlign='center'>
+                {quantity}
+              </Typography>
+              <Stack direction='row' spacing={2}>
+                <Button 
+                  variant='contained' 
+                  onClick={() => {
+                    addItem(name)
+                  }}
+                >
+                  +
+                </Button>
+                <Button 
+                  variant='contained' 
+                  onClick={() => {
+                    removeItem(name)
+                  }}
+                >
+                  -
+                </Button>
+              </Stack>
+            </Box>
+          ))}
+        </Stack>
+      </Stack>
+
+      <Button 
+        variant='contained'
+        onClick={() => {
+          handleOpen();
+        }}
+      >
+        Add New Item
+      </Button>
     </Box>
   );
 }
