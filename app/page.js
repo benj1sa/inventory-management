@@ -5,21 +5,11 @@ import { firestore } from '@/firebase';
 import { Box, Button, FormControlLabel, FormGroup, Icon, IconButton, InputAdornment, Modal, Stack, Switch, TextField, Typography } from '@mui/material';
 import { collection, getDocs, query, setDoc, getDoc, doc, deleteDoc } from 'firebase/firestore';
 import { SearchIcon } from '@mui/material';
-//import theme from './theme.js';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material';
-//import { lightTheme, darkTheme } from './theme.js';
 import RemoveCircleRoundedIcon from '@mui/icons-material/RemoveCircleRounded';
 import AddCircleRoundedIcon from '@mui/icons-material/AddCircleRounded';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';
-// import { dark } from '@mui/material/styles/createPalette.js';
-
-const darkTheme = createTheme({
-  palette: {
-    mode: 'dark',
-  },
-});
 
 export default function Home() {
   const [inventory, setInventory] = useState([]);
@@ -159,8 +149,6 @@ export default function Home() {
   // ================================================ Main Body ================================================ //
 
   return (
-    <ThemeProvider theme={darkTheme}>
-    
     <Box 
       width='100vw' 
       height='100vh' 
@@ -311,6 +299,5 @@ export default function Home() {
         Add New Item
       </Button>
     </Box>
-    </ThemeProvider>
   );
 }
