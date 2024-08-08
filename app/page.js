@@ -2,12 +2,24 @@
 import { Image } from 'next/image';
 import { useState, useEffect } from 'react';
 import { firestore } from '@/firebase';
-import { Box, Button, IconButton, InputAdornment, Modal, Stack, TextField, Typography } from '@mui/material';
+import { Box, Button, FormControlLabel, FormGroup, Icon, IconButton, InputAdornment, Modal, Stack, Switch, TextField, Typography } from '@mui/material';
 import { collection, getDocs, query, setDoc, getDoc, doc, deleteDoc } from 'firebase/firestore';
 import { SearchIcon } from '@mui/material';
-import theme from './theme.js';
-import { ThemeProvider } from '@emotion/react';
-import { lightTheme, darkTheme } from './theme.js';
+//import theme from './theme.js';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material';
+//import { lightTheme, darkTheme } from './theme.js';
+import RemoveCircleRoundedIcon from '@mui/icons-material/RemoveCircleRounded';
+import AddCircleRoundedIcon from '@mui/icons-material/AddCircleRounded';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import LightModeIcon from '@mui/icons-material/LightMode';
+// import { dark } from '@mui/material/styles/createPalette.js';
+
+const darkTheme = createTheme({
+  palette: {
+    mode: 'dark',
+  },
+});
 
 export default function Home() {
   const [inventory, setInventory] = useState([]);
@@ -17,6 +29,8 @@ export default function Home() {
   const [foundInventory, setFoundInventory] = useState(inventory);
   const [error, setError] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // ================================================ Helper Functions ================================================ //
 
   /**
    * This function handles the dark mode event
@@ -142,8 +156,11 @@ export default function Home() {
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
+  // ================================================ Main Body ================================================ //
+
   return (
-    <ThemeProvider theme={isDarkMode? darkTheme: lightTheme}>
+    <ThemeProvider theme={darkTheme}>
+    
     <Box 
       width='100vw' 
       height='100vh' 
@@ -214,12 +231,18 @@ export default function Home() {
           width='800px'
           height='100px'
           display='flex'
-          flexDirection='column'
+          flexDirection='row'
           alignItems='center' 
-          justifyContent='center'
+          justifyContent='space-between'
           borderRadius={4}
         >
           <Typography variant='h2' color='#333'>Inventory Items</Typography>
+          <IconButton
+            onClick={handleThemechange}
+            size='large'
+          >
+            <LightModeIcon fontSize='inherit' />
+          </IconButton>
         </Box>
 
         <TextField
@@ -251,29 +274,27 @@ export default function Home() {
                 },
               }}
             >
-              <Typography variant='h2' color='#333' textAlign='center'>
+              <Typography variant='h3' color='#333' textAlign='center'>
                 {name.charAt(0).toUpperCase() + name.slice(1)}
               </Typography>
-              <Typography variant='h2' color='#333' textAlign='center'>
-                {quantity}
+              <Typography variant='h3' color='#333' textAlign='center'>
+                {'x' + quantity}
               </Typography>
-              <Stack direction='row' spacing={2}>
-                <Button 
-                  variant='contained' 
-                  onClick={() => {
-                    addItem(name)
-                  }}
+              <Stack direction='row' spacing={1}>
+                <IconButton
+                  size='large'
+                  color='primary'
+                  onClick={() => {addItem(name)}}
                 >
-                  +
-                </Button>
-                <Button 
-                  variant='contained' 
-                  onClick={() => {
-                    removeItem(name)
-                  }}
+                  <AddCircleRoundedIcon fontSize='inherit'/>
+                </IconButton>
+                <IconButton
+                  size='large'
+                  color='primary'
+                  onClick={() => {removeItem(name)}}
                 >
-                  -
-                </Button>
+                  <RemoveCircleRoundedIcon fontSize='inherit'/>
+                </IconButton>
               </Stack>
             </Box>
           ))}
@@ -282,6 +303,7 @@ export default function Home() {
 
       <Button 
         variant='contained'
+        endIcon={<AddCircleRoundedIcon />}
         onClick={() => {
           handleOpen();
         }}
