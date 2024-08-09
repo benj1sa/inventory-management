@@ -1,13 +1,15 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { firestore } from '@/firebase';
-import { Box, Button, FormControlLabel, FormGroup, Icon, IconButton, InputAdornment, Modal, Stack, Switch, TextField, Typography } from '@mui/material';
+import { Box, Button, Fab, FormControlLabel, FormGroup, Icon, IconButton, InputAdornment, Modal, Stack, Switch, TextField, Typography } from '@mui/material';
 import { collection, getDocs, query, setDoc, getDoc, doc, deleteDoc } from 'firebase/firestore';
 import RemoveCircleRoundedIcon from '@mui/icons-material/RemoveCircleRounded';
 import AddCircleRoundedIcon from '@mui/icons-material/AddCircleRounded';
-import DarkModeIcon from '@mui/icons-material/DarkMode';
-import LightModeIcon from '@mui/icons-material/LightMode';
 import SearchIcon from '@mui/icons-material/Search';
+import AddCircleOutlineOutlinedIcon from '@mui/icons-material/AddCircleOutlineOutlined';
+import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
+import RemoveOutlinedIcon from '@mui/icons-material/RemoveOutlined';
+import { RemoveCircleOutlineOutlined } from '@mui/icons-material';
 
 export default function Home() {
   const [inventory, setInventory] = useState([]);
@@ -213,12 +215,15 @@ export default function Home() {
           justifyContent='space-between'
           borderRadius={4}
         >
-          <Typography variant='h2' color='#333'>Inventory Items</Typography>
-          <IconButton
-            size='large'
+          <Typography variant='h2' color='#333'>Inventory</Typography>
+          <Fab
+            color='primary'
+            onClick={() => {
+              handleOpen();
+            }}
           >
-            <DarkModeIcon fontSize='inherit' />
-          </IconButton>
+            <AddOutlinedIcon />
+          </Fab>
         </Box>
 
         <TextField
@@ -269,30 +274,20 @@ export default function Home() {
                   color='primary'
                   onClick={() => {addItem(name)}}
                 >
-                  <AddCircleRoundedIcon fontSize='inherit'/>
+                  <AddCircleOutlineOutlinedIcon fontSize='inherit'/>
                 </IconButton>
                 <IconButton
                   size='large'
                   color='primary'
                   onClick={() => {removeItem(name)}}
                 >
-                  <RemoveCircleRoundedIcon fontSize='inherit'/>
+                  <RemoveCircleOutlineOutlined fontSize='inherit'/>
                 </IconButton>
               </Stack>
             </Box>
           ))}
         </Stack>
       </Stack>
-
-      <Button 
-        variant='contained'
-        endIcon={<AddCircleRoundedIcon />}
-        onClick={() => {
-          handleOpen();
-        }}
-      >
-        Add New Item
-      </Button>
     </Box>
   );
 }
