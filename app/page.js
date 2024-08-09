@@ -1,33 +1,22 @@
 'use client';
-import { Image } from 'next/image';
 import { useState, useEffect } from 'react';
 import { firestore } from '@/firebase';
 import { Box, Button, FormControlLabel, FormGroup, Icon, IconButton, InputAdornment, Modal, Stack, Switch, TextField, Typography } from '@mui/material';
 import { collection, getDocs, query, setDoc, getDoc, doc, deleteDoc } from 'firebase/firestore';
-import { SearchIcon } from '@mui/material';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
 import RemoveCircleRoundedIcon from '@mui/icons-material/RemoveCircleRounded';
 import AddCircleRoundedIcon from '@mui/icons-material/AddCircleRounded';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';
+import SearchIcon from '@mui/icons-material/Search';
 
 export default function Home() {
   const [inventory, setInventory] = useState([]);
   const [open, setOpen] = useState(false);
   const [itemName, setItemName] = useState('');
   const [searchValue, setSearchValue] = useState('');
-  const [foundInventory, setFoundInventory] = useState(inventory);
   const [error, setError] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
 
   // ================================================ Helper Functions ================================================ //
-
-  /**
-   * This function handles the dark mode event
-   */
-  const handleThemechange = (event) => {
-    setIsDarkMode(newTheme);
-  }
 
   /**
    * This function handles the search event.
@@ -226,16 +215,22 @@ export default function Home() {
         >
           <Typography variant='h2' color='#333'>Inventory Items</Typography>
           <IconButton
-            onClick={handleThemechange}
             size='large'
           >
-            <LightModeIcon fontSize='inherit' />
+            <DarkModeIcon fontSize='inherit' />
           </IconButton>
         </Box>
 
         <TextField
           variant="outlined"
           placeholder="Search"
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
           value={searchValue}
           onChange={handleSearchChange}
           fullWidth
@@ -262,10 +257,10 @@ export default function Home() {
                 },
               }}
             >
-              <Typography variant='h3' color='#333' textAlign='center'>
+              <Typography variant='h2' color='#333' textAlign='center'>
                 {name.charAt(0).toUpperCase() + name.slice(1)}
               </Typography>
-              <Typography variant='h3' color='#333' textAlign='center'>
+              <Typography variant='h2' color='#333' textAlign='center'>
                 {'x' + quantity}
               </Typography>
               <Stack direction='row' spacing={1}>
