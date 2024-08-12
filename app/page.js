@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { firestore } from '@/firebase';
-import { Box, Button, Container, Fab, FormControlLabel, FormGroup, Grid, Icon, IconButton, InputAdornment, Modal, Paper, Stack, Switch, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, CircularProgress, Container, Fab, FormControlLabel, FormGroup, Grid, Icon, IconButton, InputAdornment, Modal, Paper, Snackbar, Stack, Switch, TextField, Typography } from '@mui/material';
 import { collection, getDocs, query, setDoc, getDoc, doc, deleteDoc } from 'firebase/firestore';
 import SearchIcon from '@mui/icons-material/Search';
 import AddCircleOutlineOutlinedIcon from '@mui/icons-material/AddCircleOutlineOutlined';
@@ -10,10 +10,12 @@ import { RemoveCircleOutlineOutlined } from '@mui/icons-material';
 
 export default function Home() {
   const [inventory, setInventory] = useState([]);
-  const [open, setOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [itemName, setItemName] = useState('');
   const [searchValue, setSearchValue] = useState('');
   const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // ================================================ Helper Functions ================================================ //
 
@@ -52,6 +54,7 @@ export default function Home() {
     });
 
     // Update the local state variable with the newly created inventory list
+    setLoading(false);
     setInventory(inventoryList);
   };
 
@@ -130,9 +133,13 @@ export default function Home() {
     updateInventory();
   }, []);
 
+  // The opening and closing functions for the 'successfully added items' snackbar
+  const handleSnackbarOpen = () => setSnackbarOpen(true);
+  const handleSnackBarClose = () => setSnackbarOpen(false);
+
   // The opening and closing functions for the 'add items' modal
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+  const handleModalOpen = () => setModalOpen(true);
+  const handleModalClose = () => setModalOpen(false);
 
   // ================================================ Main Body ================================================ //
 
@@ -144,7 +151,7 @@ export default function Home() {
       justifyContent={'center'}
     >
       {/* Modal Pop-up */}
-      <Modal open={open} onClose={handleClose}>
+      <Modal open={modalOpen} onClose={handleModalClose}>
         <Box
           display={'flex'}
           flexDirection={'column'}
@@ -184,6 +191,8 @@ export default function Home() {
               onClick={() => {
                 addItem(itemName);
                 setItemName('');
+                handleModalClose();
+                handleSnackbarOpen();
               }}
             >
               Add
@@ -197,6 +206,7 @@ export default function Home() {
         display={'flex'}
         flexDirection={'column'}
         alignItems={'center'}
+        justifyContent={'center'}
         maxWidth={1}
         sx={{
           maxWidth: '700px'
@@ -218,14 +228,14 @@ export default function Home() {
           <Fab
             color={'primary'}
             onClick={() => {
-              handleOpen();
+              handleModalOpen();
             }}
           >
             <AddOutlinedIcon />
           </Fab>
         </Box>
         </>
-        
+
         {/* Search field */}
         <>
         <TextField
@@ -247,6 +257,11 @@ export default function Home() {
         />
         </>
 
+        {/* Loading Icon */}
+        <Box display={'flex'} flexDirection={'row'} justifyContent={'center'} margin={2}>
+          {loading? <CircularProgress />: <></>}
+        </Box>
+
         {/* Iventory Items */}
         <>
         <Stack
@@ -257,7 +272,6 @@ export default function Home() {
           height={'65vh'}
           spacing={1} 
           overflow='auto'
-          marginTop={1.5}
         >
           {inventory.filter((item) => {
             return (searchValue === '')? item : item.name.toLocaleLowerCase().includes(searchValue);
@@ -308,6 +322,16 @@ export default function Home() {
         </Stack>
         </>
       </Container>
+      
+      <Snackbar open={snackbarOpen} autoHideDuration={4000} onClose={handleSnackBarClose}>
+        <Alert
+          onClose={handleSnackBarClose}
+          severity='success'
+          sx={{ width: '100%' }}
+        >
+          Added Item!
+        </Alert>
+      </Snackbar>
     </Container>
 </>);
 }
