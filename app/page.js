@@ -254,7 +254,7 @@ export default function Home() {
           alignItems='center'
 
           width='100%'
-          height={'60vh'}
+          height={'65vh'}
           spacing={1} 
           overflow='auto'
           marginTop={1.5}
