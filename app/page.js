@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { firestore } from '@/firebase';
-import { Box, Button, Fab, FormControlLabel, FormGroup, Icon, IconButton, InputAdornment, Modal, Stack, Switch, TextField, Typography } from '@mui/material';
+import { Box, Button, Container, Fab, FormControlLabel, FormGroup, Grid, Icon, IconButton, InputAdornment, Modal, Paper, Stack, Switch, TextField, Typography } from '@mui/material';
 import { collection, getDocs, query, setDoc, getDoc, doc, deleteDoc } from 'firebase/firestore';
 import RemoveCircleRoundedIcon from '@mui/icons-material/RemoveCircleRounded';
 import AddCircleRoundedIcon from '@mui/icons-material/AddCircleRounded';
@@ -139,30 +139,26 @@ export default function Home() {
 
   // ================================================ Main Body ================================================ //
 
-  return (
-    <Box 
-      width='100vw' 
-      height='100vh' 
-      display='flex'
-      flexDirection='column'
-      justifyContent='center' 
-      alignItems='center' 
-      gap={2}
-      sx={{
-        fontFamily: 'Poppins, sans-serif',
-      }}
+  return (<>
+    
+    {/* Grand container */}
+    <Container
+      display={'flex'}
+      flexDirection={'column'}
+      alignItems={'center'}
     >
+      {/* Modal Pop-up */}
       <Modal open={open} onClose={handleClose}>
-        <Box 
-          position='absolute' 
-          top='50%' 
-          left='50%'
+        <Box
+          display={'flex'}
+          flexDirection={'column'}
+          position={'absolute' }
+          top={'50%'}
+          left={'50%'}
           width={400} 
-          bgcolor='white'
+          bgcolor={'white'}
           boxShadow={24}
           p={4}
-          display='flex'
-          flexDirection='column'
           borderRadius={4}
           gap={3}
           sx={{
@@ -199,21 +195,31 @@ export default function Home() {
           </Stack>
         </Box>
       </Modal>
-      
-      <Stack
-        padding={6}
-        boxShadow={3}
-        borderRadius={4}
-        spacing={2}
+    
+      {/* Main App */}
+      <Container
+        display={'flex'}
+        flexDirection={'column'}
+        alignItems={'center'}
+        height={'100vh'}
+        
+        maxWidth={'300px'}
+        padding={5}
+        border={'1px solid #ccc'}
+        borderRadius={3}
+        margin={2}
       >
+        {/* Inventory and Add button */}
+        <>
         <Box
-          width='800px'
-          height='100px'
           display='flex'
           flexDirection='row'
           alignItems='center' 
           justifyContent='space-between'
+
           borderRadius={4}
+          width='100%'
+          marginBottom={2}
         >
           <Typography variant='h2' color='#333'>Inventory</Typography>
           <Fab
@@ -225,7 +231,10 @@ export default function Home() {
             <AddOutlinedIcon />
           </Fab>
         </Box>
-
+        </>
+        
+        {/* Search field */}
+        <>
         <TextField
           variant="outlined"
           placeholder="Search"
@@ -240,18 +249,29 @@ export default function Home() {
           onChange={handleSearchChange}
           fullWidth
         />
-      
-        <Stack width='800px' height='350px' spacing={2} overflow='auto' display='flex' alignItems='center'>
+        </>
+
+        {/* Iventory Items */}
+        <>
+        <Stack
+          display='flex'
+          alignItems='center'
+
+          width='100%'
+          spacing={1} 
+          overflow='auto' 
+        >
           {inventory.filter((item) => {
             return (searchValue === '')? item : item.name.toLocaleLowerCase().includes(searchValue);
           }).map(({name, quantity}) => (
             <Box 
-              key={name}
-              width='95%'
-              minHeight='150px'
               display='flex'
               alignItems='center'
               justifyContent='space-between'
+
+              key={name}
+              width='95%'
+              height={'20px'}
               bgcolor='#f0f0f0'
               padding={5}
               borderRadius={4}
@@ -262,22 +282,23 @@ export default function Home() {
                 },
               }}
             >
-              <Typography variant='h2' color='#333' textAlign='center'>
+              <Typography variant='p' color='#333' textAlign='center'>
                 {name.charAt(0).toUpperCase() + name.slice(1)}
               </Typography>
-              <Typography variant='h2' color='#333' textAlign='center'>
+              <Typography variant='p' color='#333' textAlign='center'>
                 {'x' + quantity}
               </Typography>
-              <Stack direction='row' spacing={1}>
+              {/* Increment & Decrement Buttons */}
+              <Stack direction='row' spacing={0}>
                 <IconButton
-                  size='large'
+                  size='medium'
                   color='primary'
                   onClick={() => {addItem(name)}}
                 >
                   <AddCircleOutlineOutlinedIcon fontSize='inherit'/>
                 </IconButton>
                 <IconButton
-                  size='large'
+                  size='medium'
                   color='primary'
                   onClick={() => {removeItem(name)}}
                 >
@@ -287,7 +308,8 @@ export default function Home() {
             </Box>
           ))}
         </Stack>
-      </Stack>
-    </Box>
-  );
+        </>
+      </Container>
+    </Container>
+</>);
 }
