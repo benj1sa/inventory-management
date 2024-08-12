@@ -201,7 +201,7 @@ export default function Home() {
         display={'flex'}
         flexDirection={'column'}
         alignItems={'center'}
-        height={'100vh'}
+        height={'70vh'}
         
         maxWidth={'300px'}
         padding={5}
@@ -212,18 +212,19 @@ export default function Home() {
         {/* Inventory and Add button */}
         <>
         <Box
-          display='flex'
-          flexDirection='row'
-          alignItems='center' 
-          justifyContent='space-between'
+          display={'flex'}
+          flexDirection={'row'}
+          alignItems={'center'} 
+          justifyContent={'space-between'}
 
-          borderRadius={4}
-          width='100%'
-          marginBottom={2}
+          //border={'1px solid #ccc'}
+          //borderRadius={4}
+          marginTop={2}
+          marginBottom={1}
         >
-          <Typography variant='h2' color='#333'>Inventory</Typography>
+          <Typography variant={'h2'} color={'#333'}>Inventory</Typography>
           <Fab
-            color='primary'
+            color={'primary'}
             onClick={() => {
               handleOpen();
             }}
@@ -236,11 +237,11 @@ export default function Home() {
         {/* Search field */}
         <>
         <TextField
-          variant="outlined"
-          placeholder="Search"
+          variant={'outlined'}
+          placeholder={'Search'}
           InputProps={{
             startAdornment: (
-              <InputAdornment position="start">
+              <InputAdornment position={'start'}>
                 <SearchIcon />
               </InputAdornment>
             ),
@@ -248,6 +249,9 @@ export default function Home() {
           value={searchValue}
           onChange={handleSearchChange}
           fullWidth
+          sx={{
+            marginBottom: '10px',
+          }}
         />
         </>
 
@@ -273,7 +277,7 @@ export default function Home() {
               width='95%'
               height={'20px'}
               bgcolor='#f0f0f0'
-              padding={5}
+              padding={3}
               borderRadius={4}
               sx={{
                 transition: 'transform 0.3s ease', // Smooth transition for the transform property
