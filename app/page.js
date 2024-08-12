@@ -214,7 +214,7 @@ export default function Home() {
           //borderRadius={4}
           marginTop={3}
         >
-          <Typography variant={'h2'} color={'#333'}>Inventory</Typography>
+          <Typography variant={'h3'} color={'#333'}>Inventory</Typography>
           <Fab
             color={'primary'}
             onClick={() => {
@@ -254,7 +254,7 @@ export default function Home() {
           alignItems='center'
 
           width='100%'
-          height={'75vh'}
+          height={'60vh'}
           spacing={1} 
           overflow='auto'
           marginTop={1.5}
