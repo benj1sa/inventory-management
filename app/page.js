@@ -3,12 +3,9 @@ import { useState, useEffect } from 'react';
 import { firestore } from '@/firebase';
 import { Box, Button, Container, Fab, FormControlLabel, FormGroup, Grid, Icon, IconButton, InputAdornment, Modal, Paper, Stack, Switch, TextField, Typography } from '@mui/material';
 import { collection, getDocs, query, setDoc, getDoc, doc, deleteDoc } from 'firebase/firestore';
-import RemoveCircleRoundedIcon from '@mui/icons-material/RemoveCircleRounded';
-import AddCircleRoundedIcon from '@mui/icons-material/AddCircleRounded';
 import SearchIcon from '@mui/icons-material/Search';
 import AddCircleOutlineOutlinedIcon from '@mui/icons-material/AddCircleOutlineOutlined';
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
-import RemoveOutlinedIcon from '@mui/icons-material/RemoveOutlined';
 import { RemoveCircleOutlineOutlined } from '@mui/icons-material';
 
 export default function Home() {
@@ -144,8 +141,7 @@ export default function Home() {
     {/* Grand container */}
     <Container
       display={'flex'}
-      flexDirection={'column'}
-      alignItems={'center'}
+      justifyContent={'center'}
     >
       {/* Modal Pop-up */}
       <Modal open={open} onClose={handleClose}>
@@ -196,18 +192,15 @@ export default function Home() {
         </Box>
       </Modal>
     
-      {/* Main App */}
+      {/* Main Iventory App */}
       <Container
         display={'flex'}
         flexDirection={'column'}
         alignItems={'center'}
-        height={'70vh'}
-        
-        maxWidth={'300px'}
-        padding={5}
-        border={'1px solid #ccc'}
-        borderRadius={3}
-        margin={2}
+        maxWidth={1}
+        sx={{
+          maxWidth: '700px'
+        }}
       >
         {/* Inventory and Add button */}
         <>
@@ -219,8 +212,7 @@ export default function Home() {
 
           //border={'1px solid #ccc'}
           //borderRadius={4}
-          marginTop={2}
-          marginBottom={1}
+          marginTop={3}
         >
           <Typography variant={'h2'} color={'#333'}>Inventory</Typography>
           <Fab
@@ -250,7 +242,7 @@ export default function Home() {
           onChange={handleSearchChange}
           fullWidth
           sx={{
-            marginBottom: '10px',
+            marginTop: '20px',
           }}
         />
         </>
@@ -262,8 +254,10 @@ export default function Home() {
           alignItems='center'
 
           width='100%'
+          height={'75vh'}
           spacing={1} 
-          overflow='auto' 
+          overflow='auto'
+          marginTop={1.5}
         >
           {inventory.filter((item) => {
             return (searchValue === '')? item : item.name.toLocaleLowerCase().includes(searchValue);
@@ -274,7 +268,7 @@ export default function Home() {
               justifyContent='space-between'
 
               key={name}
-              width='95%'
+              width={'95%'}
               height={'20px'}
               bgcolor='#f0f0f0'
               padding={3}
