@@ -1,7 +1,9 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { firestore } from '@/firebase';
-import { Alert, Box, Button, CircularProgress, Container, Fab, FormControlLabel, FormGroup, Grid, Icon, IconButton, InputAdornment, Modal, Paper, Snackbar, Stack, Switch, TextField, Typography } from '@mui/material';
+import { firestore, storage } from '@/firebase';
+import { ref, uploadBytes } from 'firebase/storage';
+import { v4 } from 'uuid';
+import { Alert, Box, Button, CircularProgress, Container, Fab, FormControlLabel, FormGroup, Grid, Icon, IconButton, Input, InputAdornment, Modal, Paper, Snackbar, Stack, Switch, TextField, Typography } from '@mui/material';
 import { collection, getDocs, query, setDoc, getDoc, doc, deleteDoc } from 'firebase/firestore';
 import SearchIcon from '@mui/icons-material/Search';
 import AddCircleOutlineOutlinedIcon from '@mui/icons-material/AddCircleOutlineOutlined';
@@ -10,17 +12,28 @@ import { RemoveCircleOutlineOutlined } from '@mui/icons-material';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import { Camera } from 'react-camera-pro';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 
 export default function Home() {
   const [inventory, setInventory] = useState([]);
-  const [modalOpen, setModalOpen] = useState(false);
+  
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [latestUpdateType, setLatestUpdateType] = useState('Added');
+  
   const [itemName, setItemName] = useState('');
+  const [itemChangeQuantity, setItemChangeQuantity] = useState(1);
+  const [selectedName, setSelectedName] = useState('');
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
+
   const [searchValue, setSearchValue] = useState('');
   const [error, setError] = useState(false);
+  const [fieldError, setFieldError] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [image, setImage] = useState(null);
+  const [imageUpload, setImageUpload] = useState(null);
   const camera = useRef(null);
 
   // ================================================ Helper Functions ================================================ //
@@ -28,8 +41,8 @@ export default function Home() {
   /**
    * This function handles the search event.
    */
-  const handleSearchChange = (event) => {
-    setSearchValue(event.target.value.toLowerCase());
+  const handleSearchChange = (e) => {
+    setSearchValue(e.target.value.toLowerCase());
   }
 
   /**
@@ -92,7 +105,7 @@ export default function Home() {
         }
     }
 
-    // Call the function to update the inventory (assumed to be defined elsewhere)
+    // Call the function to update the inventory 
     await updateInventory();
   };
 
@@ -103,9 +116,45 @@ export default function Home() {
    * @param {string} item - The ID of the item to remove from the inventory.
    * @returns {Promise<void>} - A promise that resolves when the operation is complete.
    */
-  const addItem = async (item) => {
+  // const addItem = async (item) => {
 
-    // The item field may not be empty, otherwise set the error state variable to be true
+  //   // The item field may not be empty, otherwise set the error state variable to be true
+  //   if (item.trim() == ''){
+  //     setError(true);
+  //     return;
+  //   } else {
+  //     setError(false);
+  //   }
+
+  //   // Get a reference to the document in the 'inventory' collection with the specified item ID
+  //   const docRef = doc(collection(firestore, 'inventory'), item.trim().toLocaleLowerCase());
+    
+  //   // Fetch the document snapshot
+  //   const docSnap = await getDoc(docRef);
+
+  //   // Check if the document exists in the collection
+  //   if (docSnap.exists()) {
+  //     // Extract the 'quantity' field from the document data
+  //     const { quantity } = docSnap.data();
+  //     await setDoc(docRef, { quantity: quantity + 1 });
+  //   } else {
+  //     // Set the 'quantity' field to 1
+  //     await setDoc(docRef, {quantity: 1})
+  //   }
+
+  //   // Update local inventory
+  //   await updateInventory();
+  // };
+
+  /**
+   * 
+   * @param {*} item 
+   * @param {*} changeInQuantity 
+   * @returns 
+   */
+  const setItem = async (item, changeInQuantity) => {
+    
+    // Throw an error if the item name field is empty
     if (item.trim() == ''){
       setError(true);
       return;
@@ -113,23 +162,36 @@ export default function Home() {
       setError(false);
     }
 
-    // Get a reference to the document in the 'inventory' collection with the specified item ID
+    // Get a reference to the document in the 'inventory' collection
     const docRef = doc(collection(firestore, 'inventory'), item.trim().toLocaleLowerCase());
-    
-    // Fetch the document snapshot
+    // Fetch a snapshot of the document
     const docSnap = await getDoc(docRef);
+    // The item's new quantity will be the change in quantity, 
+    // this may be updated later if the item exists
+    let newQuantity = Number(changeInQuantity);
 
-    // Check if the document exists in the collection
+    // Calculate the new item quantity and throw an error if 
+    // user tries to decrease item's in the inventory that don't exist.
     if (docSnap.exists()) {
-      // Extract the 'quantity' field from the document data
+      setLatestUpdateType('Updated');
       const { quantity } = docSnap.data();
-      await setDoc(docRef, { quantity: quantity + 1 });
+      newQuantity += quantity;
     } else {
-      // Set the 'quantity' field to 1
-      await setDoc(docRef, {quantity: 1})
+      setLatestUpdateType('Added');
+      if (newQuantity < 0){
+        setError(true);
+        return;
+      }
     }
 
-    // Call the function to update the inventory (assumed to be defined elsewhere)
+    // Update firebase with the correct quantity of item
+    if (newQuantity < 0) {
+      await deleteDoc(docRef);
+    } else {
+      await setDoc(docRef, {quantity: newQuantity});
+    }
+    
+    // Update the local inventory
     await updateInventory();
   };
 
@@ -139,11 +201,38 @@ export default function Home() {
     setCameraOpen(false);
   }
 
+  const uploadImage = () => {
+    if (imageUpload == null) return;
+    const imageRef = ref(storage, `images/${imageUpload.name + v4()}`);
+    uploadBytes(imageRef, imageUpload).then(() =>{
+       alert('Uploaded Image!');
+    });
+    setImageUpload(null);
+  };
+
   // Only runs once when the page is loaded. In other words,
   // it only updates the local displayed inventory if the page is loaded or refreshed.
   useEffect(() => {
     updateInventory();
   }, []);
+
+  const editItem = (itemName, itemChangeQuantity) => {
+    setItem(itemName, itemChangeQuantity);
+    uploadImage();
+    handleEditModalClose();
+    handleSnackbarOpen();
+  };
+
+  const addItem = (itemName, itemChangeQuantity) => {
+    if (itemChangeQuantity < 0) {
+      // Throw error here, quantity can't be negative
+      return;
+    }
+    setItem(itemName, itemChangeQuantity);
+    uploadImage();
+    handleAddModalClose();
+    handleSnackbarOpen();
+  };
 
   // The opening and clsoing functions for the 'camera' modal
   const handleCameraOpen = () => setCameraOpen(true);
@@ -154,8 +243,19 @@ export default function Home() {
   const handleSnackBarClose = () => setSnackbarOpen(false);
 
   // The opening and closing functions for the 'add items' modal
-  const handleModalOpen = () => setModalOpen(true);
-  const handleModalClose = () => setModalOpen(false);
+  const handleAddModalOpen = () => setAddModalOpen(true);
+  const handleAddModalClose = () => setAddModalOpen(false);
+
+  // The opening and closing functions for the 'edit items' modal
+  const handleEditModalOpen = (name, quantity) => {
+    setSelectedName(name);
+    setSelectedQuantity(quantity);
+    setEditModalOpen(true);
+  };
+  const handleEditModalClose = () => {
+    setEditModalOpen(false);
+    setFieldError(false);
+  }
 
   // ================================================ Main Body ================================================ //
 
@@ -185,7 +285,7 @@ export default function Home() {
             bgcolor={'white'}
             width={'400px'}
             height={'400px'}
-            aspectRatio={'1/1'}
+            aspectratio={'1/1'}
             boxShadow={24}
             p={4}
             borderRadius={4}
@@ -205,54 +305,313 @@ export default function Home() {
         </Modal>
 
         {/* Add Item Modal */}
-        <Modal open={modalOpen} onClose={handleModalClose}>
-          <Box
+        <Modal open={addModalOpen} onClose={handleAddModalClose}>
+          <Stack
             display={'flex'}
             flexDirection={'column'}
             position={'absolute' }
             top={'50%'}
             left={'50%'}
-            width={'400px'} 
+            width={'70%'}
+            maxWidth={'500px'}
             bgcolor={'white'}
             boxShadow={24}
-            p={4}
+            p={3}
             borderRadius={4}
             gap={3}
             sx={{
               transform: 'translate(-50%, -50%)',
             }}
+            spacing={0.1}
           >
-            <Typography variant='h6'>Add Item</Typography>
-            <Stack width='100%' direction='row' spacing={3}>
-              <TextField 
+            {/* Add item header with discard and add buttons */}
+            <>
+            <Stack 
+              direction={'row'}
+              justifyContent={'space-between'}
+              p={2}
+              borderRadius={2}
+              border={'1px solid #ededed'}
+              bgcolor={'white'}
+              sx={{
+                boxShadow: 1
+              }}
+            >
+              <Typography variant='h5' sx={{fontWeight: 'bold'}}>Add Item</Typography>
+              <Stack direction={'row'} spacing={1}>
+                <Button
+                  variant='outlined'
+                  color='error'
+                  onClick={() => {
+                    handleAddModalClose();
+                  }}
+                >
+                  Discard
+                </Button>
+                <Button 
+                  variant='contained'
+                  color='primary' 
+                  onClick={() => addItem(itemName, itemChangeQuantity)}
+                >
+                  Add
+                </Button>
+              </Stack>
+            </Stack>
+            </>
+            
+            {/* Item information segment */}
+            <>
+            <Stack
+              direction={'column'} 
+              spacing={2}
+              p={2}
+              borderRadius={2}
+              border={'1px solid #ededed'}
+              sx={{
+                boxShadow: 1
+              }}
+            >
+              <Typography variant={'h7'} m={2} mb={0} sx={{fontWeight: 'bold'}}>Item Information</Typography>
+              <TextField
                 variant='outlined'
-                placeholder='Item'
-                fullWidth
-                value={itemName}
+                label='Item Name'
+                size='small'
                 onChange={(e) => {
                   setItemName(e.target.value);
                 }}
                 error={error}
                 helperText={error ? 'This field cannot be empty' : ''}
                 sx={{
+                  color: 'white',
                   '& .MuiFormHelperText-root': {
                     color: error ? 'red' : 'inherit',
                   }
                 }}
               />
-              <Button 
-                variant='outlined' 
-                onClick={() => {
-                  addItem(itemName);
-                  setItemName('');
-                  handleModalClose();
-                  handleSnackbarOpen();
+              <TextField
+                variant='outlined'
+                label='Quantity'
+                type='number'
+                size='small'
+                defaultValue={'1'}
+                onChange={(e) => {
+                  setItemChangeQuantity(e.target.value);
                 }}
-              >
-                Add
-              </Button>
+              />
             </Stack>
-          </Box>
+            </>
+
+            {/* Item media segment */}
+            <>
+            <Stack
+              display={'flex'}
+              justifyContent={'center'}
+              borderRadius={2}
+              border={'1px solid #ededed'}
+              sx={{
+                boxShadow: 1
+              }}
+            >
+              <Typography variant={'h7'} m={2} mb={0} sx={{fontWeight: 'bold'}}>Item Media</Typography>
+              <Box display={'flex'} justifyContent={'center'}>
+                <Box
+                  component="img"
+                  aspectratio='1/1'
+                  width={'45%'}
+                  src={'apple.png'}
+                  bgcolor={'#f4f4f4'}
+                  borderRadius={4}
+                />
+              </Box>
+              <Stack
+                display={'flex'}
+                direction={'row'}
+                justifyContent={'space-around'}
+                alignItems={'center'}
+                m={2}
+              >
+                <Button
+                  component={'label'}
+                  role={undefined}
+                  variant={'outlined'}
+                  tabIndex={-1}
+                  startIcon={<AddPhotoAlternateIcon />}
+                >
+                  From Library
+                  <input 
+                    type={'file'}
+                    hidden
+                    onChange={(e) => {
+                      setImageUpload(e.target.files[0]);
+                    }}  
+                  />
+                </Button>
+                <Button
+                  component="label"
+                  role={undefined}
+                  variant="outlined"
+                  tabIndex={-1}
+                  startIcon={<PhotoCameraIcon />}
+                  onClick={() => {
+                    handleCameraOpen();
+                  }}
+                >
+                  Take Photo
+                </Button>
+              </Stack>
+            </Stack>
+            </>
+          </Stack>
+        </Modal>
+
+        {/* Edit Item Modal */}
+        <Modal open={editModalOpen} onClose={handleEditModalClose}>
+          <Stack
+            display={'flex'}
+            flexDirection={'column'}
+            position={'absolute' }
+            top={'50%'}
+            left={'50%'}
+            width={'70%'}
+            maxWidth={'500px'}
+            bgcolor={'white'}
+            boxShadow={24}
+            p={3}
+            borderRadius={4}
+            gap={3}
+            sx={{
+              transform: 'translate(-50%, -50%)',
+            }}
+            spacing={0.1}
+          >
+            {/* Add item header with discard and add buttons */}
+            <>
+            <Stack 
+              direction={'row'}
+              justifyContent={'space-between'}
+              p={2}
+              borderRadius={2}
+              border={'1px solid #ededed'}
+              bgcolor={'white'}
+              sx={{
+                boxShadow: 1
+              }}
+            >
+              <Typography variant='h5' sx={{fontWeight: 'bold'}}>Edit Item</Typography>
+              <Stack direction={'row'} spacing={1}>
+                <Button
+                  variant='outlined'
+                  color='error'
+                  onClick={() => {
+                    handleEditModalClose();
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  variant='contained'
+                  color='primary' 
+                  onClick={() => {
+                    setItem(itemName, itemChangeQuantity);
+                    handleEditModalClose();
+                    setLatestUpdateType('Updated');
+                    handleSnackbarOpen();
+                  }}
+                >
+                  Update
+                </Button>
+              </Stack>
+            </Stack>
+            </>
+            
+            {/* Item information segment */}
+            <>
+            <Stack
+              direction={'column'} 
+              spacing={2}
+              p={2}
+              borderRadius={2}
+              border={'1px solid #ededed'}
+              sx={{
+                boxShadow: 1
+              }}
+            >
+              <Typography variant={'h7'} m={2} mb={0} sx={{fontWeight: 'bold'}}>Item Information</Typography>
+              <TextField
+                variant='outlined'
+                label='Item Name'
+                size='small'
+                defaultValue={selectedName}
+                onChange={(e) => {
+                  setItemName(e.target.value);
+                }}
+                error={error}
+                helperText={error ? 'This field cannot be empty' : ''}
+                sx={{
+                  color: 'white',
+                  '& .MuiFormHelperText-root': {
+                    color: error ? 'red' : 'inherit',
+                  }
+                }}
+              />
+              <TextField
+                variant='outlined'
+                label='Quantity'
+                type='number'
+                size='small'
+                defaultValue={selectedQuantity}
+                onChange={(e) => {
+                  setItemChangeQuantity(e.target.value);
+                }}
+              />
+            </Stack>
+            </>
+
+            {/* Item media segment */}
+            <>
+            <Stack
+              display={'flex'}
+              justifyContent={'center'}
+              borderRadius={2}
+              border={'1px solid #ededed'}
+              sx={{
+                boxShadow: 1
+              }}
+            >
+              <Typography variant={'h7'} m={2} mb={0} sx={{fontWeight: 'bold'}}>Item Media</Typography>
+              <Stack
+                display={'flex'}
+                direction={'row'}
+                justifyContent={'space-around'}
+                alignItems={'center'}
+                m={2}
+              >
+                <Button
+                  component="label"
+                  role={undefined}
+                  variant="outlined"
+                  tabIndex={-1}
+                  startIcon={<AddPhotoAlternateIcon />}
+                >
+                  From Library
+                  <input type='file' hidden/>
+                </Button>
+                <Button
+                  component="label"
+                  role={undefined}
+                  variant="outlined"
+                  tabIndex={-1}
+                  startIcon={<PhotoCameraIcon />}
+                  onClick={() => {
+                    handleCameraOpen();
+                  }}
+                >
+                  Take Photo
+                </Button>
+              </Stack>
+            </Stack>
+            </>
+          </Stack>
         </Modal>
       
         {/* Main Iventory App */}
@@ -267,24 +626,14 @@ export default function Home() {
             justifyContent={'space-between'}
           >
             <Typography variant={'h3'} color={'#333'} sx={{fontWeight:'bold'}}>Inventory</Typography>
-            <Stack direction={'row'} spacing={2}>
-              <Fab
-                color={'primary'}
-                onClick={() => {
-                  handleCameraOpen();
-                }}
-              >
-                <PhotoCameraIcon />
-              </Fab>
-              <Fab
-                color={'primary'}
-                onClick={() => {
-                  handleModalOpen();
-                }}
-              >
-                <AddOutlinedIcon />
-              </Fab>
-            </Stack>
+            <Fab
+              color={'primary'}
+              onClick={() => {
+                handleAddModalOpen();
+              }}
+            >
+              <AddOutlinedIcon />
+            </Fab>
           </Box>
           </>
 
@@ -322,11 +671,11 @@ export default function Home() {
           </Box>
           </>
 
-          {/* Iventory Items */}
+          {/* Inventory Items */}
           <Container
             width={'100%'}
             border={1}
-            marginTop={'2'}
+            margintop={'2'}
           >
             <Grid
               container
@@ -369,9 +718,6 @@ export default function Home() {
                   item
                   xs={6}
                   sm={4}
-                  // md={4}
-                  // lg={4}
-                  // xl={4}
                   key={name}
                 >
                   <Stack
@@ -381,7 +727,7 @@ export default function Home() {
                     p={2}
                     borderRadius={4}
                     sx={{
-                      aspectRatio: '1/1',
+                      aspectratio: '1/1',
                       boxShadow: 'rgba(149, 157, 165, 0.2) 0px 8px 24px',
                       transition: 'transform 0.3s ease', // Smooth transition for the transform property
                       '&:hover': {
@@ -392,7 +738,7 @@ export default function Home() {
                     {/* Image */}
                     <Box
                       component="img"
-                      aspectRatio='1/1'
+                      aspectratio='1/1'
                       width={'100%'}
                       alt='item image'
                       src='apple.png'
@@ -409,7 +755,7 @@ export default function Home() {
                         fontWeight: 'bold'
                       }}
                     >
-                    {name.charAt(0).toUpperCase() + name.slice(1)}
+                      {name.charAt(0).toUpperCase() + name.slice(1)}
                     </Typography>
 
                     {/* Quantity and modifiers */}
@@ -420,19 +766,7 @@ export default function Home() {
                       alignItems={'center'}
                       width={'100%'}
                     >
-                      <Typography variant='p' color='#333' textAlign='center'>
-                        {'x ' + quantity}
-                      </Typography>
-
-                      <Box>
-                        <IconButton
-                          size='small'
-                          color='primary'
-                          onClick={() => {addItem(name)}}
-                        >
-                          <AddCircleOutlineOutlinedIcon fontSize='inherit'/>
-                        </IconButton>
-
+                      <Stack direction={'row'} spacing={0.75} alignItems={'center'}>
                         <IconButton
                           size='small'
                           color='primary'
@@ -440,10 +774,31 @@ export default function Home() {
                         >
                           <RemoveCircleOutlineOutlined fontSize='inherit'/>
                         </IconButton>
+                        <Typography 
+                          variant='p' 
+                          color='#333' 
+                          textAlign='center'
+                          sx={{
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          {quantity}
+                        </Typography>
+                        <IconButton
+                          size='small'
+                          color='primary'
+                          onClick={() => {addItem(name)}}
+                        >
+                          <AddCircleOutlineOutlinedIcon fontSize='inherit'/>
+                        </IconButton>
+                      </Stack>
+
+                      <Box>
 
                         <IconButton
-                        size='small'
-                        color='primary'
+                          size='small'
+                          color='primary'
+                          onClick={() => {handleEditModalOpen(name, quantity)}}
                         >
                           <MoreHorizIcon fontSize='inherit'/>
                         </IconButton>
@@ -456,13 +811,14 @@ export default function Home() {
           </Container>
         </Container>
         
+        {/* Added item successfullynconfirmation */}
         <Snackbar open={snackbarOpen} autoHideDuration={4000} onClose={handleSnackBarClose}>
           <Alert
             onClose={handleSnackBarClose}
             severity='success'
             sx={{ width: '100%' }}
           >
-            Added Item!
+            {latestUpdateType} Item!
           </Alert>
         </Snackbar>
       </Box>
