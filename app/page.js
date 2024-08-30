@@ -116,45 +116,9 @@ export default function Home() {
    * @param {string} item - The ID of the item to remove from the inventory.
    * @returns {Promise<void>} - A promise that resolves when the operation is complete.
    */
-  // const addItem = async (item) => {
+  const addItem = async (item) => {
 
-  //   // The item field may not be empty, otherwise set the error state variable to be true
-  //   if (item.trim() == ''){
-  //     setError(true);
-  //     return;
-  //   } else {
-  //     setError(false);
-  //   }
-
-  //   // Get a reference to the document in the 'inventory' collection with the specified item ID
-  //   const docRef = doc(collection(firestore, 'inventory'), item.trim().toLocaleLowerCase());
-    
-  //   // Fetch the document snapshot
-  //   const docSnap = await getDoc(docRef);
-
-  //   // Check if the document exists in the collection
-  //   if (docSnap.exists()) {
-  //     // Extract the 'quantity' field from the document data
-  //     const { quantity } = docSnap.data();
-  //     await setDoc(docRef, { quantity: quantity + 1 });
-  //   } else {
-  //     // Set the 'quantity' field to 1
-  //     await setDoc(docRef, {quantity: 1})
-  //   }
-
-  //   // Update local inventory
-  //   await updateInventory();
-  // };
-
-  /**
-   * 
-   * @param {*} item 
-   * @param {*} changeInQuantity 
-   * @returns 
-   */
-  const setItem = async (item, changeInQuantity) => {
-    
-    // Throw an error if the item name field is empty
+    // The item field may not be empty, otherwise set the error state variable to be true
     if (item.trim() == ''){
       setError(true);
       return;
@@ -162,26 +126,55 @@ export default function Home() {
       setError(false);
     }
 
+    // Get a reference to the document in the 'inventory' collection with the specified item ID
+    const docRef = doc(collection(firestore, 'inventory'), item.trim().toLocaleLowerCase());
+    
+    // Fetch the document snapshot
+    const docSnap = await getDoc(docRef);
+
+    // Check if the document exists in the collection
+    if (docSnap.exists()) {
+      // Extract the 'quantity' field from the document data
+      const { quantity } = docSnap.data();
+      await setDoc(docRef, { quantity: quantity + 1 });
+    } else {
+      // Set the 'quantity' field to 1
+      await setDoc(docRef, {quantity: 1})
+    }
+
+    // Update local inventory
+    await updateInventory();
+  };
+
+  const setItem = async (item, deltaQuantity) => {
+    
+    // Throw an error if the item name field is empty
+    if (item.trim() == ''){
+      setError(true);
+      return;
+    } else {
+      setError(false);
+      console.log('NO ERROR');
+    }
+
     // Get a reference to the document in the 'inventory' collection
     const docRef = doc(collection(firestore, 'inventory'), item.trim().toLocaleLowerCase());
+    console.log(docRef);
     // Fetch a snapshot of the document
     const docSnap = await getDoc(docRef);
+    console.log(docSnap);
     // The item's new quantity will be the change in quantity, 
     // this may be updated later if the item exists
-    let newQuantity = Number(changeInQuantity);
+    let newQuantity = Number(deltaQuantity);
+    console.log(deltaQuantity);
 
-    // Calculate the new item quantity and throw an error if 
-    // user tries to decrease item's in the inventory that don't exist.
+    // Calculate the new item quantity
     if (docSnap.exists()) {
       setLatestUpdateType('Updated');
       const { quantity } = docSnap.data();
       newQuantity += quantity;
     } else {
       setLatestUpdateType('Added');
-      if (newQuantity < 0){
-        setError(true);
-        return;
-      }
     }
 
     // Update firebase with the correct quantity of item
@@ -223,16 +216,17 @@ export default function Home() {
     handleSnackbarOpen();
   };
 
-  const addItem = (itemName, itemChangeQuantity) => {
-    if (itemChangeQuantity < 0) {
-      // Throw error here, quantity can't be negative
-      return;
-    }
-    setItem(itemName, itemChangeQuantity);
-    uploadImage();
-    handleAddModalClose();
-    handleSnackbarOpen();
-  };
+  // const addItem = (itemName, itemChangeQuantity) => {
+  //   if (itemChangeQuantity < 0) {
+  //     // Throw error here, quantity can't be negative
+  //     return;
+  //   }
+  //   setItemChangeQuantity(1);
+  //   setItem(itemName, itemChangeQuantity);
+  //   uploadImage();
+  //   handleAddModalClose();
+  //   handleSnackbarOpen();
+  // };
 
   // The opening and clsoing functions for the 'camera' modal
   const handleCameraOpen = () => setCameraOpen(true);
@@ -418,7 +412,7 @@ export default function Home() {
                   component="img"
                   aspectratio='1/1'
                   width={'45%'}
-                  src={'apple.png'}
+                  src={'placeholder.png'}
                   bgcolor={'#f4f4f4'}
                   borderRadius={4}
                 />
@@ -741,7 +735,7 @@ export default function Home() {
                       aspectratio='1/1'
                       width={'100%'}
                       alt='item image'
-                      src='apple.png'
+                      src='placeholder.png'
                       bgcolor={'#f4f4f4'}
                       borderRadius={4}
                     />
