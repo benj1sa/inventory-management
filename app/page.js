@@ -207,6 +207,11 @@ export default function Home() {
   // it only updates the local displayed inventory if the page is loaded or refreshed.
   useEffect(() => {
     updateInventory();
+    const unloadCallback = () => {firebase.app().delete()}
+    window.addEventListener('beforeunload', unloadCallback);
+    return async () => {
+      window.removeEventListener('beforeunload', unloadCallback);
+    }
   }, []);
 
   const editItem = (itemName, itemChangeQuantity) => {
