@@ -221,19 +221,7 @@ export default function Home() {
     handleSnackbarOpen();
   };
 
-  // const addItem = (itemName, itemChangeQuantity) => {
-  //   if (itemChangeQuantity < 0) {
-  //     // Throw error here, quantity can't be negative
-  //     return;
-  //   }
-  //   setItemChangeQuantity(1);
-  //   setItem(itemName, itemChangeQuantity);
-  //   uploadImage();
-  //   handleAddModalClose();
-  //   handleSnackbarOpen();
-  // };
-
-  // The opening and clsoing functions for the 'camera' modal
+  // The opening and closing functions for the 'camera' modal
   const handleCameraOpen = () => setCameraOpen(true);
   const handleCameraClose = () => setCameraOpen(false);
 
@@ -687,7 +675,6 @@ export default function Home() {
                 lg: 2,
               }}
 
-              //border={1}
               maxHeight={'70vh'}
               overflow={'auto'}
               paddingRight={2.2}
