@@ -217,9 +217,9 @@ export default function Home() {
     setEditModalOpen(false);
   }
 
-  const handleAddNewItem = async (itemName, quantity) => {
+  const handleAddNewItem = async (itemName, quantity, imageUrl) => {
     // Call server function to add the new item
-    await addItem(itemName, quantity);
+    await addItem(itemName, quantity, imageUrl);
     // Update the local copy of the inventory
     updateInventory();
     // Give user feedback of successful inventory addition
@@ -360,7 +360,7 @@ export default function Home() {
               <Button 
                 variant='contained'
                 color='primary' 
-                onClick={() => handleAddNewItem(itemNameBuffer, itemQuantityBuffer)}
+                onClick={() => handleAddNewItem(itemNameBuffer, itemQuantityBuffer, itemImageUrlBuffer)}
               >
                 Add
               </Button>
