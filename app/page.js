@@ -1,14 +1,14 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { firestore, storage } from '@/firebase';
-import { ref, uploadBytes } from 'firebase/storage';
+import { ref, uploadBytes, listAll, getDownloadURL } from 'firebase/storage';
 import { v4 } from 'uuid';
 import { Alert, Box, Button, CircularProgress, Container, Fab, FormControlLabel, FormGroup, Grid, Icon, IconButton, Input, InputAdornment, Modal, Paper, Snackbar, Stack, Switch, TextField, Typography } from '@mui/material';
 import { collection, getDocs, query, setDoc, getDoc, doc, deleteDoc, addDoc } from 'firebase/firestore';
 import SearchIcon from '@mui/icons-material/Search';
 import AddCircleOutlineOutlinedIcon from '@mui/icons-material/AddCircleOutlineOutlined';
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
-import { RemoveCircleOutlineOutlined } from '@mui/icons-material';
+import { BorderClear, RemoveCircleOutlineOutlined } from '@mui/icons-material';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import { Camera } from 'react-camera-pro';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
@@ -33,8 +33,10 @@ export default function Home() {
   
   const [selectedItemName, setSelectedItemName] = useState('');
   const [selectedItemQuantity, setSelectedItemQuantity] = useState(1);
+  const [selectedItemImageUrl, setSelectedItemImageUrl] = useState('');
   const [itemNameBuffer, setItemNameBuffer] = useState('');
   const [itemQuantityBuffer, setItemQuantityBuffer] = useState(1);
+  const [itemImageUrlBuffer, setItemImageUrlBuffer] = useState('');
 
   // Stores item update values
   const [editName, setEditName] = useState('');
@@ -44,7 +46,10 @@ export default function Home() {
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [imageUpload, setImageUpload] = useState(null);
+  const [imagelist, setImageList] = useState([]);
   const camera = useRef(null);
+
+  const imageListRef = ref(storage, 'images/');
 
   // ================================================ Helper Functions ================================================ //
 
@@ -94,9 +99,9 @@ export default function Home() {
     const docSnap = await getDoc(docRef);
 
     // Extract the 'quantity' field from the document data
-    const { quantity } = docSnap.data();
+    const { imageUrl, quantity } = docSnap.data();
     // If the quantity is 1, delete the document from the collection. Otherwise, decrement the quantity by 1 and update the document
-    await (quantity === 1)? deleteDoc(docRef) : setDoc(docRef, { quantity: Number(quantity) - 1});
+    await (quantity === 1)? deleteDoc(docRef) : setDoc(docRef, { imageUrl: imageUrl, quantity: Number(quantity) - 1});
 
     // Update the inventory 
     updateInventory();
@@ -115,22 +120,22 @@ export default function Home() {
     const docSnap = await getDoc(docRef);
 
     // Extract the 'quantity' field from the document data
-    const { quantity } = docSnap.data(); 
+    const { imageUrl, quantity } = docSnap.data();
     // Increment the 'quantity' field 
-    await setDoc(docRef, { quantity: 1 + Number(quantity) });
+    await setDoc(docRef, { imageUrl: imageUrl, quantity: 1 + Number(quantity) });
 
     // Update local inventory
     updateInventory();
   };
 
-  const addItem = async (itemName, quantity) => {
+  const addItem = async (itemName, quantity, imageUrl) => {
     if (itemName.trim() == '' || quantity <= 0){
       setError(true);
       return;
     }
     // Get a reference to the document in the 'inventory' collection with the specified item name
     const docRef = doc(collection(firestore, 'inventory'), itemName.trim().toLocaleLowerCase());
-    await setDoc(docRef, {quantity: quantity});
+    await setDoc(docRef, {imageUrl: imageUrl, quantity: quantity});
   }
   
   /**
@@ -144,8 +149,10 @@ export default function Home() {
     await deleteDoc(docRef);
   }
 
-  const updateItem = async (itemName, itemQuantity, newItemName, newItemQuantity) => {
-    if (itemName == newItemName && itemQuantity == newItemQuantity){
+  const updateItem = async (itemName, itemQuantity, imageUrl, newItemName, newItemQuantity, newImageUrl) => {
+    if (itemName == newItemName && 
+        itemQuantity == newItemQuantity && 
+        imageUrl == newImageUrl){
       return;
     }
     if (newItemName.trim() == '' || newItemQuantity <= 0){
@@ -153,7 +160,7 @@ export default function Home() {
       return;
     }
     await deleteItem(itemName);
-    await addItem(newItemName, newItemQuantity);
+    await addItem(newItemName, newItemQuantity, newImageUrl);
   }
 
   const uploadImage = () => {
@@ -162,7 +169,6 @@ export default function Home() {
     uploadBytes(imageRef, imageUpload).then(() =>{
        alert('Uploaded Image!');
     });
-    setImageUpload(null);
   };
 
   // Handles the search event
@@ -195,11 +201,16 @@ export default function Home() {
   const handleAddModalClose = () => setAddModalOpen(false);
 
   // The opening and closing functions for the 'edit items' modal
-  const handleEditModalOpen = (itemName, quantity) => {
-    setSelectedItemName(itemName.charAt(0).toUpperCase() + itemName.slice(1));
+  const handleEditModalOpen = (itemName, quantity, itemImageUrl) => {
+    // Update the state of the buffers
+    setItemImageUrlBuffer(itemImageUrl);
     setItemNameBuffer(itemName.charAt(0).toUpperCase() + itemName.slice(1));
-    setSelectedItemQuantity(quantity);
     setItemQuantityBuffer(quantity);
+    // Update the local state of selection
+    setSelectedItemImageUrl(itemImageUrl);
+    setSelectedItemName(itemName.charAt(0).toUpperCase() + itemName.slice(1));
+    setSelectedItemQuantity(quantity);
+    // Set the modal to be visible
     setEditModalOpen(true);
   };
   const handleEditModalClose = () => {
@@ -219,7 +230,7 @@ export default function Home() {
 
   const handleUpdateItem = async () => {
     // Call backend function to update item
-    await updateItem(selectedItemName, selectedItemQuantity, itemNameBuffer, itemQuantityBuffer);
+    await updateItem(selectedItemName, selectedItemQuantity, selectedItemImageUrl, itemNameBuffer, itemQuantityBuffer, itemImageUrlBuffer);
     // Update the local copy of the inventory
     updateInventory();
     // Give user feedback of successful inventory update
@@ -242,6 +253,15 @@ export default function Home() {
   useEffect(() => {
     // Update the local copy of the inventory
     updateInventory();
+
+    listAll(imageListRef).then((response) => {
+      response.items.forEach((item) => {
+        getDownloadURL(item).then((url) => {
+          setImageList((prev) => [...prev, url]);
+        });
+      });
+    });
+
     // Manage application lifecycle when closed
     const unloadCallback = () => {firebase.app().delete()}
     window.addEventListener('beforeunload', unloadCallback);
@@ -556,7 +576,7 @@ export default function Home() {
                 component="img"
                 aspectratio='1/1'
                 width={'45%'}
-                src={'placeholder.png'}
+                src={itemImageUrlBuffer || 'placeholder.png'}
                 bgcolor={'#f4f4f4'}
                 borderRadius={4}
               />
@@ -712,7 +732,7 @@ export default function Home() {
           >
             {inventory.filter((item) => {
               return (searchValue === '')? item : item.name.toLocaleLowerCase().includes(searchValue);
-            }).map(({name, quantity}) => (
+            }).map(({name, quantity, imageUrl}) => (
               
               <Grid 
                 item
@@ -736,16 +756,27 @@ export default function Home() {
                   }}
                 >
                   {/* Image */}
-                  <Box
-                    component="img"
-                    aspectratio='1/1'
-                    width={'100%'}
-                    alt='item image'
-                    src='placeholder.png'
-                    bgcolor={'#f4f4f4'}
-                    borderRadius={4}
-                  />
-
+                  <Container>
+                    <Box
+                      display={'flex'}
+                      justifyContent={'center'}
+                      alignItems={'center'}
+                      height={'170px'}
+                      width={'100%'}
+                      borderRadius={4}
+                    >
+                      <Box
+                        component='img'
+                        maxHeight={'170px'}
+                        maxWidth={'100%'}
+                        alt='item image'
+                        src={imageUrl || 'placeholder.png'}
+                        bgcolor={'#f4f4f4'}
+                        borderRadius={4}
+                      />
+                    </Box>
+                  </Container>
+                  
                   {/* Name of inventory item */}
                   <Typography
                     variant='p' 
@@ -796,7 +827,7 @@ export default function Home() {
                       <IconButton
                         size='small'
                         color='primary'
-                        onClick={() => {handleEditModalOpen(name, quantity)}}
+                        onClick={() => handleEditModalOpen(name, quantity, imageUrl)}
                       >
                         <MoreHorizIcon fontSize='inherit'/>
                       </IconButton>
