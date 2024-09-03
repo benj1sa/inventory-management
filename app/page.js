@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { firestore, storage } from '@/firebase';
-import { ref, uploadBytes, listAll, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, listAll, getDownloadURL, deleteObject } from 'firebase/storage';
 import { v4 } from 'uuid';
 import { Alert, Box, Button, CircularProgress, Container, Fab, FormControlLabel, FormGroup, Grid, Icon, IconButton, Input, InputAdornment, Modal, Paper, Snackbar, Stack, Switch, TextField, Typography } from '@mui/material';
 import { collection, getDocs, query, setDoc, getDoc, doc, deleteDoc, addDoc } from 'firebase/firestore';
@@ -36,20 +36,13 @@ export default function Home() {
   const [selectedItemImageUrl, setSelectedItemImageUrl] = useState('');
   const [itemNameBuffer, setItemNameBuffer] = useState('');
   const [itemQuantityBuffer, setItemQuantityBuffer] = useState(1);
-  const [itemImageUrlBuffer, setItemImageUrlBuffer] = useState('');
-
-  // Stores item update values
-  const [editName, setEditName] = useState('');
-  const [editQuantity, setEditQuantity] = useState(1);
+  const [itemImageBuffer, setItemImageBuffer] = useState('');
+  const [itemImageBufferPreview, setItemImageBufferPreview] = useState('');
 
   const [searchValue, setSearchValue] = useState('');
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [imageUpload, setImageUpload] = useState(null);
-  const [imagelist, setImageList] = useState([]);
   const camera = useRef(null);
-
-  const imageListRef = ref(storage, 'images/');
 
   // ================================================ Helper Functions ================================================ //
 
@@ -128,6 +121,15 @@ export default function Home() {
     updateInventory();
   };
 
+  /**
+   * Adds an item to the inventory with the specified parameters. itemName must not be empty. quantity must
+   * not be less than 1.
+   * 
+   * @param {*} itemName 
+   * @param {*} quantity 
+   * @param {*} imageUrl 
+   * @returns 
+   */
   const addItem = async (itemName, quantity, imageUrl) => {
     if (itemName.trim() == '' || quantity <= 0){
       setError(true);
@@ -146,6 +148,19 @@ export default function Home() {
   const deleteItem = async (itemName) => {
     // Get a reference to the document in the 'inventory' collection with the specified item name
     const docRef = doc(collection(firestore, 'inventory'), itemName.trim().toLocaleLowerCase());
+
+    const docSnap = await getDoc(docRef);
+    const { imageUrl } = docSnap.data();
+
+    // Extract the path from the URL
+    const baseUrl = 'https://firebasestorage.googleapis.com/v0/b/inventory-management-690cc.appspot.com/o/';
+    const imagePath = imageUrl.replace(baseUrl, '').split('?')[0].replace('%2F', '/');
+
+    // Create a reference to the image
+    const imageRef = ref(storage, imagePath);
+
+    // Delete both entries 
+    await deleteObject(imageRef);
     await deleteDoc(docRef);
   }
 
@@ -163,12 +178,25 @@ export default function Home() {
     await addItem(newItemName, newItemQuantity, newImageUrl);
   }
 
-  const uploadImage = () => {
-    if (imageUpload == null) return;
-    const imageRef = ref(storage, `images/${imageUpload.name + v4()}`);
-    uploadBytes(imageRef, imageUpload).then(() =>{
-       alert('Uploaded Image!');
-    });
+  /**
+   * Uploads the image buffer state to Firebase Storage. If the state is null, does nothing.
+   * 
+   * @returns uploaded image URL
+   */
+  const uploadItemImageBuffer = async () => {
+    if (itemImageBuffer == null) return;
+
+    try {
+      const imageRef = ref(storage, `images/${itemImageBuffer.name + v4()}`);
+      console.log(imageRef);
+      await uploadBytes(imageRef, itemImageBuffer);
+      const url = await getDownloadURL(imageRef); 
+      console.log(url);
+      return url;
+    } catch (error) {
+      console.error('Failed to upload image:', error);
+      throw error;
+    }
   };
 
   // Handles the search event
@@ -180,13 +208,17 @@ export default function Home() {
   // Handles item quantity buffer changes
   const handleItemQuantityBufferChange = (event) => setItemQuantityBuffer(event.target.value);
 
+  // Handles item image buffer changes
+  const handleImageBufferChange = (event) => {
+    setItemImageBuffer(event.target.files[0]);
+    setItemImageBufferPreview(URL.createObjectURL(event.target.files[0]));
+  }
+
   // Handle taking a photo with the camera
   const handleCapture = async (dataUri) => {
     setImage(dataUri);
     setCameraOpen(false);
   }
-
-  const handleImageUpload = async (event) => setImageUpload(event.target.files[0]);
 
   // The opening and closing functions for the 'camera' modal
   const handleCameraOpen = () => setCameraOpen(true);
@@ -203,11 +235,11 @@ export default function Home() {
   // The opening and closing functions for the 'edit items' modal
   const handleEditModalOpen = (itemName, quantity, itemImageUrl) => {
     // Update the state of the buffers
-    setItemImageUrlBuffer(itemImageUrl);
+    setSelectedItemImageUrl(itemImageUrl);
     setItemNameBuffer(itemName.charAt(0).toUpperCase() + itemName.slice(1));
     setItemQuantityBuffer(quantity);
     // Update the local state of selection
-    setSelectedItemImageUrl(itemImageUrl);
+    setItemImageBufferPreview(itemImageUrl);
     setSelectedItemName(itemName.charAt(0).toUpperCase() + itemName.slice(1));
     setSelectedItemQuantity(quantity);
     // Set the modal to be visible
@@ -215,11 +247,17 @@ export default function Home() {
   };
   const handleEditModalClose = () => {
     setEditModalOpen(false);
+    setItemImageBufferPreview('');
   }
 
-  const handleAddNewItem = async (itemName, quantity, imageUrl) => {
-    // Call server function to add the new item
-    await addItem(itemName, quantity, imageUrl);
+  const handleAddNewItem = async () => {
+    // Upload image to Firebase Storage and get the image URL
+    const itemImageBufferURL = await uploadItemImageBuffer();
+    console.log(itemNameBuffer);
+    console.log(itemQuantityBuffer);
+    console.log(itemImageBufferURL);
+    // Call server function to add the new item with the 
+    await addItem(itemNameBuffer, itemQuantityBuffer, itemImageBufferURL);
     // Update the local copy of the inventory
     updateInventory();
     // Give user feedback of successful inventory addition
@@ -229,8 +267,9 @@ export default function Home() {
   }
 
   const handleUpdateItem = async () => {
+    const itemImageBufferURL = await uploadItemImageBuffer();
     // Call backend function to update item
-    await updateItem(selectedItemName, selectedItemQuantity, selectedItemImageUrl, itemNameBuffer, itemQuantityBuffer, itemImageUrlBuffer);
+    await updateItem(selectedItemName, selectedItemQuantity, selectedItemImageUrl, itemNameBuffer, itemQuantityBuffer, itemImageBufferURL);
     // Update the local copy of the inventory
     updateInventory();
     // Give user feedback of successful inventory update
@@ -253,14 +292,6 @@ export default function Home() {
   useEffect(() => {
     // Update the local copy of the inventory
     updateInventory();
-
-    listAll(imageListRef).then((response) => {
-      response.items.forEach((item) => {
-        getDownloadURL(item).then((url) => {
-          setImageList((prev) => [...prev, url]);
-        });
-      });
-    });
 
     // Manage application lifecycle when closed
     const unloadCallback = () => {firebase.app().delete()}
@@ -360,7 +391,7 @@ export default function Home() {
               <Button 
                 variant='contained'
                 color='primary' 
-                onClick={() => handleAddNewItem(itemNameBuffer, itemQuantityBuffer, itemImageUrlBuffer)}
+                onClick={handleAddNewItem}
               >
                 Add
               </Button>
@@ -420,10 +451,10 @@ export default function Home() {
             <Typography variant={'h7'} m={2} mb={0} sx={{fontWeight: 'bold'}}>Item Media</Typography>
             <Box display={'flex'} justifyContent={'center'}>
               <Box
-                component="img"
+                component='img'
                 aspectratio='1/1'
                 width={'45%'}
-                src={'placeholder.png'}
+                src={itemImageBufferPreview || 'placeholder.png'}
                 bgcolor={'#f4f4f4'}
                 borderRadius={4}
               />
@@ -437,22 +468,20 @@ export default function Home() {
             >
               <Button
                 component={'label'}
-                role={undefined}
                 variant={'outlined'}
-                tabIndex={-1}
                 startIcon={<AddPhotoAlternateIcon />}
               >
                 From Library
                 <input 
                   type={'file'}
                   hidden
-                  onChange={handleImageUpload}  
+                  onChange={handleImageBufferChange}  
                 />
               </Button>
               <Button
-                component="label"
+                component='label'
                 role={undefined}
-                variant="outlined"
+                variant='outlined'
                 tabIndex={-1}
                 startIcon={<PhotoCameraIcon />}
                 onClick={handleCameraOpen}
@@ -535,7 +564,7 @@ export default function Home() {
               variant='outlined'
               label='Item Name'
               size='small'
-              defaultValue={itemNameBuffer}
+              defaultValue={selectedItemName}
               onChange={handleItemNameBufferChange}
               error={error}
               helperText={error ? 'This field cannot be empty' : ''}
@@ -551,7 +580,7 @@ export default function Home() {
               label='Quantity'
               type='number'
               size='small'
-              defaultValue={itemQuantityBuffer}
+              defaultValue={selectedItemQuantity}
               onChange={handleItemQuantityBufferChange}
             />
           </Stack>
@@ -569,14 +598,16 @@ export default function Home() {
             }}
           >
             {/* title */}
-            <Typography variant={'h7'} m={2} mb={0} sx={{fontWeight: 'bold'}}>Item Media</Typography>
+            <Typography variant={'h7'} m={2} mb={0} sx={{fontWeight: 'bold'}}>Item Image</Typography>
             {/* preview image */}
             <Box display={'flex'} justifyContent={'center'}>
+              
               <Box
-                component="img"
-                aspectratio='1/1'
-                width={'45%'}
-                src={itemImageUrlBuffer || 'placeholder.png'}
+                component='img'
+                maxHeight={'170px'}
+                maxWidth={'90%'}
+                alt='item image'
+                src={itemImageBufferPreview || selectedItemImageUrl || 'placeholder.png'}
                 bgcolor={'#f4f4f4'}
                 borderRadius={4}
               />
@@ -590,24 +621,24 @@ export default function Home() {
               m={2}
             >
               <Button
-                component="label"
-                role={undefined}
-                variant="outlined"
-                tabIndex={-1}
+                component='label'
+                variant='outlined'
                 startIcon={<AddPhotoAlternateIcon />}
               >
                 From Library
-                <input type='file' hidden/>
+                <input 
+                  type='file' 
+                  hidden
+                  onChange={handleImageBufferChange}
+                />
               </Button>
               <Button
-                component="label"
+                component='label'
                 role={undefined}
-                variant="outlined"
+                variant='outlined'
                 tabIndex={-1}
                 startIcon={<PhotoCameraIcon />}
-                onClick={() => {
-                  handleCameraOpen();
-                }}
+                onClick={handleCameraOpen}
               >
                 Take Photo
               </Button>
@@ -622,9 +653,9 @@ export default function Home() {
             justifyContent={'center'}
           >
             <Button
-              component="label"
+              component='label'
               color='error'
-              variant="outlined"
+              variant='outlined'
               startIcon={<DeleteIcon />}
               onClick={handleDeleteItem}
             >
@@ -746,6 +777,7 @@ export default function Home() {
                   spacing={0.7}
                   p={2}
                   borderRadius={4}
+                  border={'1px solid #e4e4e4'}
                   sx={{
                     aspectratio: '1/1',
                     boxShadow: 'rgba(149, 157, 165, 0.2) 0px 8px 24px',
