@@ -253,9 +253,6 @@ export default function Home() {
   const handleAddNewItem = async () => {
     // Upload image to Firebase Storage and get the image URL
     const itemImageBufferURL = await uploadItemImageBuffer();
-    console.log(itemNameBuffer);
-    console.log(itemQuantityBuffer);
-    console.log(itemImageBufferURL);
     // Call server function to add the new item with the 
     await addItem(itemNameBuffer, itemQuantityBuffer, itemImageBufferURL);
     // Update the local copy of the inventory
@@ -381,17 +378,19 @@ export default function Home() {
           >
             <Typography variant='h5' sx={{fontWeight: 'bold'}}>Add Item</Typography>
             <Stack direction={'row'} spacing={1}>
-              <Button
+              {/* <Button
                 variant='outlined'
                 color='error'
                 onClick={handleAddModalClose}
+                sx={{ textTransform: 'none' }}
               >
                 Discard
-              </Button>
+              </Button> */}
               <Button 
                 variant='contained'
                 color='primary' 
                 onClick={handleAddNewItem}
+                sx={{ textTransform: 'none' }}
               >
                 Add
               </Button>
@@ -470,15 +469,16 @@ export default function Home() {
                 component={'label'}
                 variant={'outlined'}
                 startIcon={<AddPhotoAlternateIcon />}
+                sx={{ textTransform: 'none' }}
               >
-                From Library
+                Select Media
                 <input 
                   type={'file'}
                   hidden
                   onChange={handleImageBufferChange}  
                 />
               </Button>
-              <Button
+              {/* <Button
                 component='label'
                 role={undefined}
                 variant='outlined'
@@ -487,7 +487,7 @@ export default function Home() {
                 onClick={handleCameraOpen}
               >
                 Take Photo
-              </Button>
+              </Button> */}
             </Stack>
           </Stack>
           </>
@@ -529,17 +529,19 @@ export default function Home() {
           >
             <Typography variant='h5' sx={{fontWeight: 'bold'}}>Edit Item</Typography>
             <Stack direction={'row'} spacing={1}>
-              <Button
+              {/* <Button
                 variant='outlined'
                 color='error'
                 onClick={() => handleEditModalClose()}
+                sx={{ textTransform: 'none' }}
               >
                 Cancel
-              </Button>
+              </Button> */}
               <Button 
                 variant='contained'
                 color='primary' 
                 onClick={() => handleUpdateItem()}
+                sx={{ textTransform: 'none' }}
               >
                 Update
               </Button>
@@ -624,15 +626,16 @@ export default function Home() {
                 component='label'
                 variant='outlined'
                 startIcon={<AddPhotoAlternateIcon />}
+                sx={{ textTransform: 'none' }}
               >
-                From Library
+                Select Image
                 <input 
                   type='file' 
                   hidden
                   onChange={handleImageBufferChange}
                 />
               </Button>
-              <Button
+              {/* <Button
                 component='label'
                 role={undefined}
                 variant='outlined'
@@ -641,7 +644,7 @@ export default function Home() {
                 onClick={handleCameraOpen}
               >
                 Take Photo
-              </Button>
+              </Button> */}
             </Stack>
           </Stack>
           </>
