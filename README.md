@@ -7,7 +7,7 @@
 
 ## Video Walkthrough
 
-<img src='' title='Video Walkthrough' width='' alt='Video Walkthrough' />
+<img src='https://github.com/benj1sa/inventory-management/blob/main/public/inventoryAppDemo.gif' title='Video Walkthrough' width='' alt='Video Walkthrough' />
 
 ## Live Demo
 
