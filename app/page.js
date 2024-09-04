@@ -392,7 +392,7 @@ export default function Home() {
                 onClick={handleAddNewItem}
                 sx={{ textTransform: 'none' }}
               >
-                Add
+                Add Item
               </Button>
             </Stack>
           </Stack>
@@ -543,7 +543,7 @@ export default function Home() {
                 onClick={() => handleUpdateItem()}
                 sx={{ textTransform: 'none' }}
               >
-                Update
+                Update Item
               </Button>
             </Stack>
           </Stack>
