@@ -13,12 +13,6 @@
 
 Demo: https://inventory-management-six-inky.vercel.app
 
-## Usage
-
-```sh
-npm run start
-```
-
 ## Author
 
 👤 **Benjamin Saenz**
